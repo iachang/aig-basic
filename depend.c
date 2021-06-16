@@ -22,3 +22,50 @@ bool aiger_filename_check(const char* filename) {
 
 	return true;
 }
+
+void read_aig(const char* filename) {
+	FILE *fp;
+	int c;
+
+	fp = fopen(filename, "r");
+
+	if (!fp) {
+		printf("Error opening the file %s", filename);
+		exit(1);
+	}
+
+	char* line = NULL;
+	char* header;
+    size_t len = 0;
+    ssize_t line_len;
+
+	size_t line_cnt = 0;
+	
+	int MILOA[5];
+
+
+	// Read in the AIG file line-by-line
+	while ((line_len = getline(&line, &len, fp)) != -1) {
+		// Read the AIG header in MILOA format
+		if (line_cnt == 0) {
+			char* token = strtok(line, " ");
+			if (strcmp("aig", token)) {
+				perror("Malformed AIG header!\n");
+			}
+
+			for (int i = 0; i < 5; i++) {
+				token = strtok(NULL, " ");
+				if (token == NULL) { 
+					perror("Malformed AIG header!\n");
+				}
+				
+				MILOA[i] = atoi(token);
+			}
+		}
+
+        
+		line_cnt += 1;
+    }
+
+	fclose(fp);
+}

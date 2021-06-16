@@ -9,7 +9,7 @@ int main(int argc, char** argv) {
 	}
 
 	if (aiger_filename_check(argv[1])) {
-		printf("aite bet bro you good\n");
+		printf("Success loading the AIG file\n");
 	} else {
 		perror("Error, file name does not exist or malformatted string input!");
 		exit(1);
@@ -17,5 +17,9 @@ int main(int argc, char** argv) {
 
 	printf("Hey there, welcome to ");
 	greetings();
+
+	read_aig(argv[1]);
+
+	
 	return 0;	
 }
