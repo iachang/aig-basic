@@ -23,6 +23,15 @@ bool aiger_filename_check(const char* filename) {
 	return true;
 }
 
+unsigned aiger_read_unsigned( unsigned char ** ppPos )
+{
+    unsigned x = 0, i = 0;
+    unsigned char ch;
+    while ((ch = *(*ppPos)++) & 0x80)
+        x |= (ch & 0x7f) << (7 * i++);
+    return x | (ch << (7 * i));
+}
+
 void read_aig(const char* filename) {
 	FILE *fp;
 	int c;
@@ -58,14 +67,30 @@ void read_aig(const char* filename) {
 				if (token == NULL) { 
 					perror("Malformed AIG header!\n");
 				}
-				
+
 				MILOA[i] = atoi(token);
+				printf("%d\n", MILOA[i]);
 			}
 		}
 
-        
+		if (line_cnt > 3) {
+			printf("%s\n", line);
+			// Read the AND gates?
+			for (int i = 0; i < MILOA[4]; i++) {
+				unsigned uLit = ((i + 1 + MILOA[1] + MILOA[2]) << 1);
+				unsigned uLit1 = uLit  - aiger_read_unsigned(&line);
+        		unsigned uLit0 = uLit1 - aiger_read_unsigned(&line);
+				printf("%u %u %u\n", uLit, uLit1, uLit0);
+			}
+			
+		}
+		
 		line_cnt += 1;
     }
+
+
+
+
 
 	fclose(fp);
 }
