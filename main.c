@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 	printf("Hey there, welcome to ");
 	greetings();
 
-	read_aig(argv[1]);
+	read_aig_wrapper(argv[1]);
 
 	
 	return 0;	
