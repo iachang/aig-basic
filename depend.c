@@ -7,6 +7,11 @@
 #include "string.h"
 #include "assert.h"
 
+#define max(a,b) \
+   ({ __typeof__ (a) _a = (a); \
+       __typeof__ (b) _b = (b); \
+     _a > _b ? _a : _b; })
+
 // Simple AIG Parser entirely written by Alan Mishchenko (2021) from ABC
 static unsigned Aiger_ReadUnsigned( FILE * pFile )
 {
@@ -58,7 +63,6 @@ int* Aiger_Read( char * pFileName, int * pnObjs, int * pnIns, int * pnLatches, i
         return NULL;
     }
     nObjs = 1 + nIns + 2*nLatches + nOuts + nAnds;
-    //pObjs = ABC_CALLOC( int, nObjs * 2 );
     pObjs = calloc( sizeof(int), nObjs * 2 );
     // read flop input literals
     for ( i = 0; i < nLatches; i++ )
@@ -87,9 +91,10 @@ int* Aiger_Read( char * pFileName, int * pnObjs, int * pnIns, int * pnLatches, i
         pObjs[2*(1+nIns+i)+1] = uLit1;
     }
 
+    /*
     for ( i = 0; i < 2 * nObjs; i++) {
-	printf("%d : %d\n", i, pObjs[i]);
-    }
+	    printf("%d : %d\n", i, pObjs[i]);
+    }*/
 
     fclose( pFile );
     if ( pnObjs )    *pnObjs = nObjs;
@@ -120,8 +125,28 @@ bool aiger_filename_check(const char* filename) {
 	return true;
 }
 
+int lit_to_ulit(int lit) {
+    return lit >> 1;
+}
+
 uint64_t longest_path_in_aig(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
-	return 0;
+    uint64_t* pathDP = (uint64_t*) calloc(nIns + nAnds + 1, sizeof(uint64_t));
+    
+    int longest_path = 0;
+    const int start = (nIns + 1) * 2;
+    // nIns + 1 because we include the CONST0
+    
+    for (int i = 0; i < nAnds; i++) {
+        int in1 = pObjs[start + 2 * i];
+        int in2 = pObjs[start + 2 * i + 1];
+    
+        pathDP[nIns + 1 + i] = max(pathDP[lit_to_ulit(in1)], pathDP[lit_to_ulit(in2)]) + 1;
+        // nIns + 1 because we include the CONST0
+
+        longest_path = max(longest_path, pathDP[nIns + 1 + i]);
+    } 
+    
+	return longest_path;
 }
 
 void read_aig_wrapper(const char* filename) {
@@ -131,8 +156,9 @@ void read_aig_wrapper(const char* filename) {
 		return;
 	}
 
-	longest_path_in_aig(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
-        
+	int longest_path = longest_path_in_aig(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
+    printf("Longest Path: %d\n", longest_path);
+
     free(pObjs);
 }
 
