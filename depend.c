@@ -91,9 +91,10 @@ int* Aiger_Read( char * pFileName, int * pnObjs, int * pnIns, int * pnLatches, i
         pObjs[2*(1+nIns+i)+1] = uLit1;
     }
     
+    /*
     for ( i = 0; i < 2 * nObjs; i++) {
 	    printf("%d : %d\n", i, pObjs[i]);
-    }
+    }*/
 
     fclose( pFile );
     if ( pnObjs )    *pnObjs = nObjs;
@@ -208,7 +209,11 @@ uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds
 
     // Initialize all the inputs to have a list of size 1
     int** tfi_set = malloc(sizeof(int*) * (nIns + nAnds + nOuts + 1));
-    for (int i = 0; i < nIns + 1; i++) {
+
+    // Initialize the CONST0 node to have a list of size 0
+    tfi_set[0] = calloc(2, sizeof(int));
+
+    for (int i = 1; i < nIns + 1; i++) {
         tfi_set[i] = malloc(sizeof(int) * 2);
         tfi_set[i][0] = 1;
         tfi_set[i][1] = i;
@@ -268,7 +273,7 @@ void read_aig_wrapper(const char* filename) {
     list2_test[3] = 5;
     list2_test[4] = 6;*/
 
-    naive_union(list1_test, list2_test);
+    //naive_union(list1_test, list2_test);
 
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
 
