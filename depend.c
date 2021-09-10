@@ -149,56 +149,126 @@ uint64_t longest_path_in_aig(int nObjs, int nIns, int nLatches, int nOuts, int n
 	return longest_path;
 }
 
-int* naive_union(int* list1, int* list2){
+int real_merge_size(int* list1, int* list2) {
     int list1_size = list1[0];
     int list2_size = list2[0];
+    int tmp_merge_size = list1_size + list2_size;
+    int test = 0;
 
-    //printf("List1 size: %d, List2 size: %d\n", list1_size, list2_size);
+    int* ptr_list1 = list1 + 1;
+    int* ptr_list2 = list2 + 1;
 
-    int included_count = 0;
-    for (int i = 0; i < list1_size; i++) {
-        bool is_included = false;
-        for (int j = 0; j < list2_size; j++) {
-            if (list1[i + 1] == list2[j + 1]) {
-                is_included = true;
-                included_count += 1;
-            }
+    for (int i = 0; i < tmp_merge_size; i++) {
+        // Our ptr is at the end, so WLOG set it to be max 
+        if (list1_size == 0 && list2_size == 0) {
+            return test;
         }
+
+        if ((*(ptr_list1) < *(ptr_list2) && list1_size > 0) || (list2_size == 0 && list1_size > 0)) {
+            // Increment the ptr for list1
+            ptr_list1++;
+            list1_size--;
+        } else if ((*(ptr_list1) > *(ptr_list2) && list2_size > 0) || (list1_size == 0 && list2_size > 0)) {
+            // Increment the ptr for list2
+            ptr_list2++;
+            list2_size--;
+        } else {
+            // If the two lists are equal at the same position
+            // Then we only incorporate one value to prevent duplicates
+            // Increment both pointers to remove duplicates
+            ptr_list1++;
+            ptr_list2++;
+            list1_size--;
+            list2_size--;
+        }
+        test++;
     }
 
-    int union_list_size = list1_size + list2_size - included_count;
+    return test;
+}
+
+
+// Checks if sorted list2 is contained in sorted list1
+bool check_list_contained(int* list1, int* list2) {
+    int real_size = real_merge_size(list1, list2);
+    int list2_size = list2[0];
+
+    int* ptr_list1 = list1 + 1;
+    int* ptr_list2 = list2 + 1;
+
+    int equal_cnt = 0; 
+
+    for (int i = 0; i < real_size; i++) {
+        if (*(ptr_list1) < *(ptr_list2)) {
+            ptr_list1++;
+        } else if (*(ptr_list1) > *(ptr_list2)) {
+            ptr_list2++;
+        } else {
+            ptr_list1++;
+            ptr_list2++;
+            equal_cnt++;
+        }
+    }
     
+    if (equal_cnt == list2_size) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+// Merges two sorted integer lists into a larger sorter list
+void mergesort_list(int* list1, int* list2, int* sorted_list) {
+
+    int list1_size = list1[0];
+    int list2_size = list2[0];
+    int sorted_list_size = sorted_list[0];
+
+    int* ptr_list1 = list1 + 1;
+    int* ptr_list2 = list2 + 1;
+    int* ptr_sorted = sorted_list + 1;
+
+    int ptr_list1_tracker = 0;
+    int ptr_list2_tracker = 0;
+
+    for (int i = 0; i < sorted_list_size; i++) {
+        // Our ptr is at the end, so WLOG set it to be max 
+        if ((*(ptr_list1) < *(ptr_list2) && list1_size > 0) || (list2_size == 0 && list1_size > 0)) {
+            // Increment the ptr for list1
+            sorted_list[i + 1] = *ptr_list1;
+            //printf("list1 %d\n", *ptr_list1);
+            ptr_list1++;
+            list1_size--;
+        } else if ((*(ptr_list1) > *(ptr_list2) && list2_size > 0) || (list1_size == 0 && list2_size > 0)) {
+            // Increment the ptr for list2
+            sorted_list[i + 1] = *ptr_list2;
+            //printf("list2 %d\n", *ptr_list2);
+            ptr_list2++;
+            list2_size--;
+        } else {
+            // If the two lists are equal at the same position
+            // Then we only incorporate one value to prevent duplicates
+            // Increment both pointers to remove duplicates
+            sorted_list[i + 1] = *ptr_list1;
+            ptr_list1++;
+            ptr_list2++;
+            list1_size--;
+            list2_size--;
+        }
+    }
+}
+
+// Unions two sorted integer lists
+int* naive_union(int* list1, int* list2){
+    int union_list_size = real_merge_size(list1, list2);
+    if(union_list_size == 0){
+        printf("wack %d %d\n", list1[0], list2[0]);
+    }
     int* union_list = malloc(sizeof(int) * (union_list_size + 1));
     union_list[0] = union_list_size;
-    for (int i = 0; i < list1_size; i++) {
-        union_list[i + 1] = list1[i + 1];
-    }
-
-    int actual_i = 0;
-    for (int i = 0; i < list2_size; i++) {
-        bool is_included = false;
-        for (int j = 0; j < list1_size; j++) {
-            if (list2[i + 1] == list1[j + 1]) {
-                is_included = true;
-            }
-        }
-
-        if (!is_included) {
-            union_list[list1_size + actual_i + 1] = list2[i + 1];
-            actual_i += 1;
-        }
-    }
-
-    // Will this cause bugs? Maybe not because topological?
-    //free(list1);
-    //free(list2);
-
-    /*
-    printf("Size: %d\n", union_list[0]);
-    for (int i = 0; i < union_list_size; i++) {
-        printf("%d ", union_list[i + 1]);
-    }
-    printf("\n");*/
+    
+    mergesort_list(list1, list2, union_list);
 
     return union_list;
 }
@@ -211,7 +281,7 @@ uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds
     int** tfi_set = malloc(sizeof(int*) * (nIns + nAnds + nOuts + 1));
 
     // Initialize the CONST0 node to have a list of size 0
-    tfi_set[0] = calloc(2, sizeof(int));
+    tfi_set[0] = calloc(1, sizeof(int));
 
     for (int i = 1; i < nIns + 1; i++) {
         tfi_set[i] = malloc(sizeof(int) * 2);
@@ -265,15 +335,45 @@ void read_aig_wrapper(const char* filename) {
     list1_test[3] = 3;
     list1_test[4] = 4;
     list1_test[5] = 5;
-
     int* list2_test = malloc(sizeof(int) * 5);
     list2_test[0] = 4;
     list2_test[1] = 3;
     list2_test[2] = 4;
     list2_test[3] = 5;
-    list2_test[4] = 6;*/
+    list2_test[4] = 6;
+    if (check_list_contained(list1_test, list2_test)) {
+        printf("list 2 contained in list 1!\n");
+    } else {
+        printf("Nope!\n");
+    }
+    int* combined_test = naive_union(list1_test, list2_test);
+    printf("Combined test: \n");
+    for (int i = 0; i < combined_test[0]; i++) {
+        printf("%d ", combined_test[i + 1]);
+    }
+    printf("\n");
 
-    //naive_union(list1_test, list2_test);
+    printf("Performing the unit test on union_list:\n");
+    int* list3_test = malloc(sizeof(int) * 6);
+    list3_test[0] = 4;
+    list3_test[1] = 1;
+    list3_test[2] = 2;
+    list3_test[3] = 3;
+    list3_test[4] = 4;
+    int* list4_test = malloc(sizeof(int) * 2);
+    list4_test[0] = 0;
+    list4_test[1] = 0;
+    if (check_list_contained(list3_test, list4_test)) {
+        printf("list 4 contained in list 3!\n");
+    } else {
+        printf("Nope!\n");
+    }
+    int* combined_test_2 = naive_union(list3_test, list4_test);
+    printf("Combined test 2: \n");
+    for (int i = 0; i < combined_test_2[0]; i++) {
+        printf("%d ", combined_test_2[i + 1]);
+    }
+    printf("\n");*/
 
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
 
