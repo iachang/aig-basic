@@ -259,17 +259,30 @@ void mergesort_list(int* list1, int* list2, int* sorted_list) {
     }
 }
 
+void print_list(int* list) {
+    int list_size = list[0];
+    printf("Printing list of size %d\n", list_size);
+
+    for (int i = 1; i <= list_size; i++) {
+        printf("%d ", list[i]);
+    }
+    printf("\n");
+}
+
 // Unions two sorted integer lists
 int* naive_union(int* list1, int* list2){
-    int union_list_size = real_merge_size(list1, list2);
-    if(union_list_size == 0){
-        printf("wack %d %d\n", list1[0], list2[0]);
-    }
-    int* union_list = malloc(sizeof(int) * (union_list_size + 1));
-    union_list[0] = union_list_size;
-    
-    mergesort_list(list1, list2, union_list);
+    if (check_list_contained(list1, list2)) {
+        return list1;
+    } 
+    // TO-DO: fix or figure out the weird bug when I introduce the branch
+    /* else if (check_list_contained(list2, list1)) {
+        return list2;
+    } */
 
+    int union_list_size = real_merge_size(list1, list2);
+    int* union_list = malloc(sizeof(int) * (union_list_size + 2));
+    union_list[0] = union_list_size;
+    mergesort_list(list1, list2, union_list);
     return union_list;
 }
 
@@ -281,10 +294,10 @@ uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds
     int** tfi_set = malloc(sizeof(int*) * (nIns + nAnds + nOuts + 1));
 
     // Initialize the CONST0 node to have a list of size 0
-    tfi_set[0] = calloc(1, sizeof(int));
+    tfi_set[0] = calloc(2, sizeof(int));
 
     for (int i = 1; i < nIns + 1; i++) {
-        tfi_set[i] = malloc(sizeof(int) * 2);
+        tfi_set[i] = malloc(sizeof(int) * 3);
         tfi_set[i][0] = 1;
         tfi_set[i][1] = i;
     }
