@@ -152,39 +152,37 @@ uint64_t longest_path_in_aig(int nObjs, int nIns, int nLatches, int nOuts, int n
 int real_merge_size(int* list1, int* list2) {
     int list1_size = list1[0];
     int list2_size = list2[0];
-    int tmp_merge_size = list1_size + list2_size;
-    int test = 0;
+    int real_biglist_size = 0;
 
-    int* ptr_list1 = list1 + 1;
-    int* ptr_list2 = list2 + 1;
+    int* list1_start = list1 + 1;
+    int* list2_start = list2 + 1;
 
-    for (int i = 0; i < tmp_merge_size; i++) {
-        // Our ptrs is at the end
-        if (list1_size == 0 && list2_size == 0) {
-            return test;
-        }
+    int* list1_end = list1 + list1_size + 1;
+    int* list2_end = list2 + list2_size + 1;
 
-        if ((*(ptr_list1) < *(ptr_list2) && list1_size > 0) || (list2_size == 0 && list1_size > 0)) {
-            // Increment the ptr for list1
-            ptr_list1++;
-            list1_size--;
-        } else if ((*(ptr_list1) > *(ptr_list2) && list2_size > 0) || (list1_size == 0 && list2_size > 0)) {
-            // Increment the ptr for list2
-            ptr_list2++;
-            list2_size--;
+    while (list1_start < list1_end && list2_start < list2_end)  {
+        if (*list1_start == *list2_start) {
+            list1_start++;
+            list2_start++;
+        } else if (*list1_start < *list2_start) {
+            list1_start++;
         } else {
-            // If the two lists are equal at the same position
-            // Then we only incorporate one value to prevent duplicates
-            // Increment both pointers to remove duplicates
-            ptr_list1++;
-            ptr_list2++;
-            list1_size--;
-            list2_size--;
+            list2_start++;
         }
-        test++;
+        real_biglist_size++;
+    }
+    
+    while (list1_start < list1_end) {
+        list1_start++;
+        real_biglist_size++;
     }
 
-    return test;
+    while (list2_start < list2_end) {
+        list2_start++;
+        real_biglist_size++;
+    }
+
+    return real_biglist_size;
 }
 
 
