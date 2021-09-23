@@ -159,7 +159,7 @@ int real_merge_size(int* list1, int* list2) {
     int* ptr_list2 = list2 + 1;
 
     for (int i = 0; i < tmp_merge_size; i++) {
-        // Our ptr is at the end, so WLOG set it to be max 
+        // Our ptrs is at the end
         if (list1_size == 0 && list2_size == 0) {
             return test;
         }
@@ -191,72 +191,47 @@ int real_merge_size(int* list1, int* list2) {
 // Checks if sorted list2 is contained in sorted list1
 bool check_list_contained(int* list1, int* list2) {
     int real_size = real_merge_size(list1, list2);
-    int list2_size = list2[0];
-
-    int* ptr_list1 = list1 + 1;
-    int* ptr_list2 = list2 + 1;
-
-    int equal_cnt = 0; 
-
-    for (int i = 0; i < real_size; i++) {
-        if (*(ptr_list1) < *(ptr_list2)) {
-            ptr_list1++;
-        } else if (*(ptr_list1) > *(ptr_list2)) {
-            ptr_list2++;
-        } else {
-            ptr_list1++;
-            ptr_list2++;
-            equal_cnt++;
-        }
-    }
-    
-    if (equal_cnt == list2_size) {
+    if (real_size == list1[0])
         return true;
-    } else {
+    else
         return false;
-    }
 }
 
 
 // Merges two sorted integer lists into a larger sorter list
-void mergesort_list(int* list1, int* list2, int* sorted_list) {
-
+void mergesort_list(int* list1, int* list2, int* biglist) {
     int list1_size = list1[0];
     int list2_size = list2[0];
-    int sorted_list_size = sorted_list[0];
+    int biglist_size = biglist[0];
 
-    int* ptr_list1 = list1 + 1;
-    int* ptr_list2 = list2 + 1;
-    int* ptr_sorted = sorted_list + 1;
+    int* list1_start = list1 + 1;
+    int* list2_start = list2 + 1;
+    int* biglist_start = biglist + 1;
 
-    int ptr_list1_tracker = 0;
-    int ptr_list2_tracker = 0;
+    int* list1_end = list1 + list1_size + 1;
+    int* list2_end = list2 + list2_size + 1;
 
-    for (int i = 0; i < sorted_list_size; i++) {
-        // Our ptr is at the end, so WLOG set it to be max 
-        if ((*(ptr_list1) < *(ptr_list2) && list1_size > 0) || (list2_size == 0 && list1_size > 0)) {
-            // Increment the ptr for list1
-            sorted_list[i + 1] = *ptr_list1;
-            //printf("list1 %d\n", *ptr_list1);
-            ptr_list1++;
-            list1_size--;
-        } else if ((*(ptr_list1) > *(ptr_list2) && list2_size > 0) || (list1_size == 0 && list2_size > 0)) {
-            // Increment the ptr for list2
-            sorted_list[i + 1] = *ptr_list2;
-            //printf("list2 %d\n", *ptr_list2);
-            ptr_list2++;
-            list2_size--;
+    while(list1_start < list1_end && list2_start < list2_end)  {
+        if (*list1_start == *list2_start) {
+            *biglist_start++ = *list1_start++;
+            list2_start++;
+        } else if (*list1_start < *list2_start) {
+            *biglist_start++ = *list1_start++;
         } else {
-            // If the two lists are equal at the same position
-            // Then we only incorporate one value to prevent duplicates
-            // Increment both pointers to remove duplicates
-            sorted_list[i + 1] = *ptr_list1;
-            ptr_list1++;
-            ptr_list2++;
-            list1_size--;
-            list2_size--;
+            *biglist_start++ = *list2_start++;
         }
     }
+
+    while (list1_start < list1_end) {
+        *biglist_start++ = *list1_start++;
+    }
+
+    while (list2_start < list2_end) {
+        *biglist_start++ = *list2_start++;
+    }
+
+    assert(biglist_size >= list1_size);
+    assert(biglist_size >= list2_size);
 }
 
 void print_list(int* list) {
@@ -274,10 +249,9 @@ int* naive_union(int* list1, int* list2){
     if (check_list_contained(list1, list2)) {
         return list1;
     } 
-    // TO-DO: fix or figure out the weird bug when I introduce the branch
-    /* else if (check_list_contained(list2, list1)) {
+    else if (check_list_contained(list2, list1)) {
         return list2;
-    } */
+    } 
 
     int union_list_size = real_merge_size(list1, list2);
     int* union_list = malloc(sizeof(int) * (union_list_size + 2));
