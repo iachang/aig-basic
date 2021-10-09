@@ -129,6 +129,59 @@ int lit_to_ulit(int lit) {
     return lit >> 1;
 }
 
+int ulit_to_plit(int uLit) {
+    return uLit << 1;
+}
+
+int lit_to_plit(int lit) {
+    return lit >> 1 << 1;
+}
+
+// Helper function to count the support sizes for a unique Travel ID
+static int recursive_supp_helper(int* tid_nodes, int tid, int node, int* pObjs) {
+    int uNode = lit_to_ulit(node);
+    if (!node || tid_nodes[uNode] == tid) {
+        return 0;
+    }
+
+    tid_nodes[uNode] = tid;
+
+    //Check if our node is a ci
+    if (pObjs[node] == 0 && pObjs[node + 1] == 0) {
+        return 1;
+    }
+
+    int in1 = lit_to_plit(pObjs[node]);
+    int in2 = lit_to_plit(pObjs[node + 1]);
+
+    // Indicates a CO, we only want to return one AND result and not duplicate
+    if (in1 == in2) {
+        return recursive_supp_helper(tid_nodes, tid, in1, pObjs);
+    }
+
+    return recursive_supp_helper(tid_nodes, tid, in1, pObjs)
+        + recursive_supp_helper(tid_nodes, tid, in2, pObjs);
+}
+
+int recursive_total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
+    int count = 0;
+    int tid = 0;
+    
+    // Initialize our travel id tracker array
+    int* tid_nodes = calloc(nIns + nAnds + nOuts + 1, sizeof(int));
+
+    // Iterate over all outputs
+    for (int i = 0; i < nOuts; i++) {
+        int out = lit_to_plit(pObjs[(nIns + 1 + nAnds + i) * 2]);
+        tid++;
+
+        count += recursive_supp_helper(tid_nodes, tid, out, pObjs);
+    }
+    
+    printf("Total TFI count (Recursive): %d\n", count);
+    return count;
+}
+
 uint64_t longest_path_in_aig(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
     uint64_t* pathDP = (uint64_t*) calloc(nIns + nAnds + 1, sizeof(uint64_t));
     
@@ -269,7 +322,7 @@ uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds
     tfi_set[0] = calloc(2, sizeof(int));
 
     for (int i = 1; i < nIns + 1; i++) {
-        tfi_set[i] = malloc(sizeof(int) * 3);
+        tfi_set[i] = malloc(sizeof(int) * 2);
         tfi_set[i][0] = 1;
         tfi_set[i][1] = i;
     }
@@ -361,6 +414,7 @@ void read_aig_wrapper(const char* filename) {
     printf("\n");*/
 
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
+    recursive_total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
 
     free(pObjs);
 }
