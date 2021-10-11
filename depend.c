@@ -6,6 +6,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "assert.h"
+#include "time.h"
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -138,29 +139,20 @@ int lit_to_plit(int lit) {
 }
 
 // Helper function to count the support sizes for a unique Travel ID
-static int recursive_supp_helper(int* tid_nodes, int tid, int node, int* pObjs) {
-    int uNode = lit_to_ulit(node);
-    if (!node || tid_nodes[uNode] == tid) {
+static int recursive_supp_helper(int* tid_nodes, int tid, int lit, int* pObjs) {
+    if (lit < 2 || tid_nodes[lit_to_ulit(lit)] == tid) {
         return 0;
     }
 
-    tid_nodes[uNode] = tid;
+    tid_nodes[lit_to_ulit(lit)] = tid;
 
     //Check if our node is a ci
-    if (pObjs[node] == 0 && pObjs[node + 1] == 0) {
+    if (pObjs[lit] == 0) {
         return 1;
     }
 
-    int in1 = lit_to_plit(pObjs[node]);
-    int in2 = lit_to_plit(pObjs[node + 1]);
-
-    // Indicates a CO, we only want to return one AND result and not duplicate
-    if (in1 == in2) {
-        return recursive_supp_helper(tid_nodes, tid, in1, pObjs);
-    }
-
-    return recursive_supp_helper(tid_nodes, tid, in1, pObjs)
-        + recursive_supp_helper(tid_nodes, tid, in2, pObjs);
+    return recursive_supp_helper(tid_nodes, tid, pObjs[lit], pObjs)
+        + recursive_supp_helper(tid_nodes, tid, pObjs[lit^1], pObjs);
 }
 
 int recursive_total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
@@ -172,10 +164,10 @@ int recursive_total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int 
 
     // Iterate over all outputs
     for (int i = 0; i < nOuts; i++) {
-        int out = lit_to_plit(pObjs[(nIns + 1 + nAnds + i) * 2]);
+        int lit = pObjs[(nIns + 1 + nAnds + i) * 2];
         tid++;
 
-        count += recursive_supp_helper(tid_nodes, tid, out, pObjs);
+        count += recursive_supp_helper(tid_nodes, tid, lit, pObjs);
     }
     
     printf("Total TFI count (Recursive): %d\n", count);
@@ -413,8 +405,15 @@ void read_aig_wrapper(const char* filename) {
     }
     printf("\n");*/
 
+    float iter_tfi_start_time = (float)clock()/CLOCKS_PER_SEC;
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
+    float iter_tfi_end_time = (float)clock()/CLOCKS_PER_SEC;
+    printf("Iterative TFI count time (sec): %0.5f\n", iter_tfi_end_time - iter_tfi_start_time);
+
+    float recur_tfi_start_time = (float)clock()/CLOCKS_PER_SEC;
     recursive_total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
+    float recur_tfi_end_time = (float)clock()/CLOCKS_PER_SEC;
+    printf("Recursive TFI count time (sec): %0.5f\n", recur_tfi_end_time - recur_tfi_start_time);
 
     free(pObjs);
 }
