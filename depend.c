@@ -240,6 +240,15 @@ bool check_list_contained(int* list1, int* list2) {
         return false;
 }
 
+// Checks if sorted list is contained in sorted biglist
+bool check_biglist_contained(int* smalllist, int* biglist) {
+    if (biglist[0] == smalllist[0]) {
+        return true;
+    }
+    else
+        return false;
+}
+
 
 // Merges two sorted integer lists into a larger sorter list
 void mergesort_list(int* list1, int* list2, int* biglist) {
@@ -277,6 +286,46 @@ void mergesort_list(int* list1, int* list2, int* biglist) {
     assert(biglist_size >= list2_size);
 }
 
+// Merges two sorted integer lists into a larger sorter list, but with no size known for biglist
+void mergesort_sizeless_list(int* list1, int* list2, int* biglist) {
+    int list1_size = list1[0];
+    int list2_size = list2[0];
+
+    int* list1_start = list1 + 1;
+    int* list2_start = list2 + 1;
+    int* biglist_start = biglist + 1;
+
+    int* list1_end = list1 + list1_size + 1;
+    int* list2_end = list2 + list2_size + 1;
+
+    while(list1_start < list1_end && list2_start < list2_end)  {
+        if (*list1_start == *list2_start) {
+            *biglist_start++ = *list1_start++;
+            list2_start++;
+        } else if (*list1_start < *list2_start) {
+            *biglist_start++ = *list1_start++;
+        } else {
+            *biglist_start++ = *list2_start++;
+        }
+    }
+
+    while (list1_start < list1_end) {
+        *biglist_start++ = *list1_start++;
+    }
+
+    while (list2_start < list2_end) {
+        *biglist_start++ = *list2_start++;
+    }
+
+    int biglist_size = biglist_start - (biglist + 1);
+
+    assert(biglist_size >= list1_size);
+    assert(biglist_size >= list2_size);
+
+    biglist[0] = biglist_size;
+    biglist = realloc(biglist, (biglist_size + 1) * sizeof(int));
+}
+
 void print_list(int* list) {
     int list_size = list[0];
     printf("Printing list of size %d\n", list_size);
@@ -297,9 +346,24 @@ int* naive_union(int* list1, int* list2){
     } 
 
     int union_list_size = real_merge_size(list1, list2);
-    int* union_list = malloc(sizeof(int) * (union_list_size + 2));
+    int* union_list = malloc(sizeof(int) * (union_list_size + 1));
     union_list[0] = union_list_size;
     mergesort_list(list1, list2, union_list);
+    return union_list;
+}
+
+// Uses a bounce buffer to merge tmp sets, and we perform ops on this tmp merged set
+int* efficient_union(int* list1, int* list2){
+    int union_list_size = list1[0] + list2[0];
+    int* union_list = malloc(sizeof(int) * (union_list_size + 1));
+    mergesort_sizeless_list(list1, list2, union_list);
+
+    if (check_biglist_contained(list1, union_list)) {
+        return list1;
+    } else if (check_biglist_contained(list2, union_list)) {
+        return list2;
+    }
+
     return union_list;
 }
 
@@ -323,6 +387,49 @@ uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds
         int in1 = pObjs[start + 2 * i];
         int in2 = pObjs[start + 2 * i + 1];
         tfi_set[nIns + 1 + i] = naive_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)]);
+    }
+
+    int total_count = 0;
+    //int* current_list;
+    for (int i = 0; i < nOuts; i++) {
+        int out = pObjs[(nIns + 1 + nAnds + i) * 2];
+        tfi_set[nIns + 1 + nAnds + i] = tfi_set[lit_to_ulit(out)];
+
+        /*
+        if (i == 0)
+            current_list = tfi_set[nIns + 1 + nAnds + i];
+        else
+            current_list = naive_union(tfi_set[nIns + 1 + nAnds + i], current_list);*/
+        
+        total_count += tfi_set[lit_to_ulit(out)][0];
+    }
+
+    printf("Total TFI count: %d\n", total_count);
+    //printf("Total TFI union count: %d\n", current_list[0]);
+    return total_count;
+    
+}
+
+uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
+    const int start = (nIns + 1) * 2;
+    // nIns + 1 because we include the CONST0
+
+    // Initialize all the inputs to have a list of size 1
+    int** tfi_set = malloc(sizeof(int*) * (nIns + nAnds + nOuts + 1));
+
+    // Initialize the CONST0 node to have a list of size 0
+    tfi_set[0] = calloc(2, sizeof(int));
+
+    for (int i = 1; i < nIns + 1; i++) {
+        tfi_set[i] = malloc(sizeof(int) * 2);
+        tfi_set[i][0] = 1;
+        tfi_set[i][1] = i;
+    }
+    
+    for (int i = 0; i < nAnds; i++) {
+        int in1 = pObjs[start + 2 * i];
+        int in2 = pObjs[start + 2 * i + 1];
+        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)]);
     }
 
     int total_count = 0;
@@ -409,6 +516,11 @@ void read_aig_wrapper(const char* filename) {
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
     float iter_tfi_end_time = (float)clock()/CLOCKS_PER_SEC;
     printf("Iterative TFI count time (sec): %0.5f\n", iter_tfi_end_time - iter_tfi_start_time);
+
+    float iter_tfi_eff_start_time = (float)clock()/CLOCKS_PER_SEC;
+    total_tfi_eff_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
+    float iter_tfi_eff_end_time = (float)clock()/CLOCKS_PER_SEC;
+    printf("Iterative TFI efficient count time (sec): %0.5f\n", iter_tfi_eff_end_time - iter_tfi_eff_start_time);
 
     float recur_tfi_start_time = (float)clock()/CLOCKS_PER_SEC;
     recursive_total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
