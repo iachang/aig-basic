@@ -323,7 +323,6 @@ void mergesort_sizeless_list(int* list1, int* list2, int* biglist) {
     assert(biglist_size >= list2_size);
 
     biglist[0] = biglist_size;
-    biglist = realloc(biglist, (biglist_size + 1) * sizeof(int));
 }
 
 void print_list(int* list) {
@@ -353,18 +352,26 @@ int* naive_union(int* list1, int* list2){
 }
 
 // Uses a bounce buffer to merge tmp sets, and we perform ops on this tmp merged set
-int* efficient_union(int* list1, int* list2){
-    int union_list_size = list1[0] + list2[0];
-    int* union_list = malloc(sizeof(int) * (union_list_size + 1));
-    mergesort_sizeless_list(list1, list2, union_list);
+int* efficient_union(int* list1, int* list2, int max_size){
+    int* tmp_union_list = malloc(sizeof(int) * (max_size + 1));
+    mergesort_sizeless_list(list1, list2, tmp_union_list);
 
-    if (check_biglist_contained(list1, union_list)) {
+    if (check_biglist_contained(list1, tmp_union_list)) {
+        free(tmp_union_list);
         return list1;
-    } else if (check_biglist_contained(list2, union_list)) {
+    } else if (check_biglist_contained(list2, tmp_union_list)) {
+        free(tmp_union_list);
         return list2;
     }
 
-    return union_list;
+    int* real_union_list = malloc(sizeof(int) * (tmp_union_list[0] + 1));
+    real_union_list[0] = tmp_union_list[0];
+    for(int i = 1; i <= real_union_list[0]; i++){
+        real_union_list[i] = tmp_union_list[i];
+    }
+    free(tmp_union_list);
+
+    return real_union_list;
 }
 
 uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
@@ -429,7 +436,7 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
     for (int i = 0; i < nAnds; i++) {
         int in1 = pObjs[start + 2 * i];
         int in2 = pObjs[start + 2 * i + 1];
-        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)]);
+        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)], nIns);
     }
 
     int total_count = 0;
@@ -515,12 +522,12 @@ void read_aig_wrapper(const char* filename) {
     float iter_tfi_start_time = (float)clock()/CLOCKS_PER_SEC;
     total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
     float iter_tfi_end_time = (float)clock()/CLOCKS_PER_SEC;
-    printf("Iterative TFI count time (sec): %0.5f\n", iter_tfi_end_time - iter_tfi_start_time);
+    printf("Iterative TFI count time (sec): %0.5f\n\n", iter_tfi_end_time - iter_tfi_start_time);
 
     float iter_tfi_eff_start_time = (float)clock()/CLOCKS_PER_SEC;
     total_tfi_eff_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
     float iter_tfi_eff_end_time = (float)clock()/CLOCKS_PER_SEC;
-    printf("Iterative TFI efficient count time (sec): %0.5f\n", iter_tfi_eff_end_time - iter_tfi_eff_start_time);
+    printf("Iterative TFI efficient count time (sec): %0.5f\n\n", iter_tfi_eff_end_time - iter_tfi_eff_start_time);
 
     float recur_tfi_start_time = (float)clock()/CLOCKS_PER_SEC;
     recursive_total_tfi_count(nObjs, nIns, nLatches, nOuts, nAnds, pObjs);
