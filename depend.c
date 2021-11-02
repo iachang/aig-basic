@@ -352,15 +352,12 @@ int* naive_union(int* list1, int* list2){
 }
 
 // Uses a bounce buffer to merge tmp sets, and we perform ops on this tmp merged set
-int* efficient_union(int* list1, int* list2, int max_size){
-    int* tmp_union_list = malloc(sizeof(int) * (max_size + 1));
+int* efficient_union(int* list1, int* list2, int* tmp_union_list){
     mergesort_sizeless_list(list1, list2, tmp_union_list);
 
     if (check_biglist_contained(list1, tmp_union_list)) {
-        free(tmp_union_list);
         return list1;
     } else if (check_biglist_contained(list2, tmp_union_list)) {
-        free(tmp_union_list);
         return list2;
     }
 
@@ -369,7 +366,6 @@ int* efficient_union(int* list1, int* list2, int max_size){
     for(int i = 1; i <= real_union_list[0]; i++){
         real_union_list[i] = tmp_union_list[i];
     }
-    free(tmp_union_list);
 
     return real_union_list;
 }
@@ -427,6 +423,9 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
     // Initialize the CONST0 node to have a list of size 0
     tfi_set[0] = calloc(2, sizeof(int));
 
+    // Initialize the largest possible union list once and we just use it all the time
+    int* tmp_union_list = malloc(sizeof(int) * (nIns + 1));
+
     for (int i = 1; i < nIns + 1; i++) {
         tfi_set[i] = malloc(sizeof(int) * 2);
         tfi_set[i][0] = 1;
@@ -436,8 +435,10 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
     for (int i = 0; i < nAnds; i++) {
         int in1 = pObjs[start + 2 * i];
         int in2 = pObjs[start + 2 * i + 1];
-        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)], nIns);
+        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)], tmp_union_list);
     }
+
+    free(tmp_union_list);
 
     int total_count = 0;
     //int* current_list;
