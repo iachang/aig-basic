@@ -7,6 +7,7 @@
 #include "string.h"
 #include "assert.h"
 #include "time.h"
+#include "vecEnt.h"
 
 #define max(a,b) \
    ({ __typeof__ (a) _a = (a); \
@@ -352,7 +353,8 @@ int* naive_union(int* list1, int* list2){
 }
 
 // Uses a bounce buffer to merge tmp sets, and we perform ops on this tmp merged set
-int* efficient_union(int* list1, int* list2, int* tmp_union_list){
+int* efficient_union(int* list1, int* list2, int nIns, Vec_Ent_t* p){
+    int* tmp_union_list = Vec_EntFetch(p, nIns + 1);
     mergesort_sizeless_list(list1, list2, tmp_union_list);
 
     if (check_biglist_contained(list1, tmp_union_list)) {
@@ -361,13 +363,10 @@ int* efficient_union(int* list1, int* list2, int* tmp_union_list){
         return list2;
     }
 
-    int* real_union_list = malloc(sizeof(int) * (tmp_union_list[0] + 1));
-    real_union_list[0] = tmp_union_list[0];
-    for(int i = 1; i <= real_union_list[0]; i++){
-        real_union_list[i] = tmp_union_list[i];
-    }
+    
+    Vec_EntCommit(p, tmp_union_list[0] + 1);
 
-    return real_union_list;
+    return tmp_union_list;
 }
 
 uint64_t total_tfi_count(int nObjs, int nIns, int nLatches, int nOuts, int nAnds, int* pObjs) {
@@ -424,7 +423,7 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
     tfi_set[0] = calloc(2, sizeof(int));
 
     // Initialize the largest possible union list once and we just use it all the time
-    int* tmp_union_list = malloc(sizeof(int) * (nIns + 1));
+    Vec_Ent_t* p = Vec_EntAlloc( 20 );
 
     for (int i = 1; i < nIns + 1; i++) {
         tfi_set[i] = malloc(sizeof(int) * 2);
@@ -435,10 +434,8 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
     for (int i = 0; i < nAnds; i++) {
         int in1 = pObjs[start + 2 * i];
         int in2 = pObjs[start + 2 * i + 1];
-        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)], tmp_union_list);
+        tfi_set[nIns + 1 + i] = efficient_union(tfi_set[lit_to_ulit(in1)], tfi_set[lit_to_ulit(in2)], nIns, p);
     }
-
-    free(tmp_union_list);
 
     int total_count = 0;
     //int* current_list;
@@ -454,6 +451,8 @@ uint64_t total_tfi_eff_count(int nObjs, int nIns, int nLatches, int nOuts, int n
         
         total_count += tfi_set[lit_to_ulit(out)][0];
     }
+
+    Vec_EntFree( p );
 
     printf("Total TFI count: %d\n", total_count);
     //printf("Total TFI union count: %d\n", current_list[0]);

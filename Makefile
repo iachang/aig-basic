@@ -9,7 +9,7 @@ aig-basic: main.o depend.o
 main.o: main.c depend.h
 	$(CC) $(CFLAGS) -c main.c
 
-depend.o: depend.c depend.h
+depend.o: depend.c depend.h vecEnt.h
 	$(CC) $(CFLAGS) -c depend.c
 
 clean:
